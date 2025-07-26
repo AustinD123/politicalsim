@@ -79,24 +79,19 @@ class PoliticalMesaModel(Model):
         self.datacollector.collect(self)
         self.current_step += 1 # Continue to manually increment if used for specific logic outside Model.steps
 
-    def hold_election(self) -> np.ndarray:
-        """Conduct election and return vote counts"""
-        vote_counts = np.zeros(self.num_politicians)
-        
+    def hold_election(self, return_choices=False):
+        vote_counts = np.zeros(len(self.politicians), dtype=int)
+        voter_choices = {}
+
         for voter in self.voters:
-            # Ensure voters are still part of the model's self.voters list if they were created there
-            # or iterate over self.agents if all agents should vote.
-            # Assuming self.voters list is correctly maintained.
-            vote = voter.vote(self.politicians) 
-            if vote >= 0:
-                vote_counts[vote] += 1
-        
-        # Update politician histories
-        for i, politician in enumerate(self.politicians):
-            politician.vote_history.append(vote_counts[i])
-        
-        self.last_election_results = vote_counts
+            choice = voter.vote(self.politicians)
+            vote_counts[choice] += 1
+            voter_choices[voter.unique_id] = choice
+
+        if return_choices:
+            return vote_counts, voter_choices
         return vote_counts
+
     
     def apply_external_shock(self, shock_type: str = "random"):
         """Apply external shock to voter preferences"""
@@ -181,36 +176,29 @@ class PoliticalGymEnvironment(gym.Env):
         
         self.current_step = 0
         return self._get_observation(), {}
-    
     def step(self, actions):
-        """Execute one step"""
-        # Update politician policies based on RL actions
-        for i, politician in enumerate(self.mesa_model.politicians):
-            politician.update_policy(actions[i])
-        
-        # Run Mesa simulation step (voter interactions, social influence)
-        self.mesa_model.step()
-        
-        # Apply external shocks periodically
-        if self.current_step % 50 == 0 and self.current_step > 0:
-            self.mesa_model.apply_external_shock()
-        
-        # Hold elections periodically
         rewards = np.zeros(self.num_politicians)
+        
         if self.current_step % 20 == 0:
             vote_counts = self.mesa_model.hold_election()
             rewards = vote_counts.astype(np.float32)
-        
-        # Alternative reward: continuous voter alignment
         else:
             for i, politician in enumerate(self.mesa_model.politicians):
                 feedback = politician.get_voter_feedback(self.mesa_model.voters)
-                rewards[i] = feedback['avg_alignment'] * 10  # Scale reward
-        
+                rewards[i] = float(feedback['avg_alignment']) * 10
+
         self.current_step += 1
         done = self.current_step >= self.max_steps
-        
-        return self._get_observation(), rewards, done, False, self._get_info()
+        total_reward = float(np.sum(rewards))  # must be a scalar!
+
+        return self._get_observation(), total_reward, done, False, self._get_info()
+
+
+
+
+
+
+
     
     def _get_observation(self):
         """Get current observation state"""

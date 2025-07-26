@@ -1,5 +1,5 @@
 from model import PoliticalGymEnvironment
-
+from callbacks import ElectionRewardCallback
 def train_with_stable_baselines():
     """Simple training example"""
     from stable_baselines3 import PPO
@@ -24,8 +24,10 @@ def train_with_stable_baselines():
     )
     
     # Train
+    
     print("Starting training...")
-    model.learn(total_timesteps=50000)
+    model.learn(total_timesteps=50000, callback=ElectionRewardCallback())
+
     
     # Save model
     model.save("political_agents")
