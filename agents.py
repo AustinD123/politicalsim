@@ -25,6 +25,8 @@ class VoterAgent(Agent):
         # Memory
         self.voting_history = []
         self.last_satisfaction = 0.0
+        self.reward=0.0
+        self.unique_id=unique_id
     
     def step(self):
         """Mesa step - apply social influence"""
@@ -98,6 +100,7 @@ class SimplePoliticianAgent(Agent):
         # Simple behavioral traits
         self.consistency_preference = np.random.uniform(0.1, 0.9)  # Resist large policy changes
         self.popularity_seeking = np.random.uniform(0.3, 0.8)     # How much they chase votes
+        self.unique_id=unique_id
     
     def step(self):
         """Mesa step - politicians can have autonomous behaviors here"""
